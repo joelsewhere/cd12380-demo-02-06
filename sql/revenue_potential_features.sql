@@ -1,4 +1,4 @@
-SELECT customer.id
+SELECT customer.id customer_id
      , lead_score.score
      , cart_activity.activity
 FROM customer

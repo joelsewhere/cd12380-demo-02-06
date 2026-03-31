@@ -16,7 +16,7 @@ def init_database():
             ]:
 
             SQLExecuteQueryOperator(
-                task_id="customer",
+                task_id=table,
                 conn_id="customers",
                 sql=f"DROP TABLE IF EXISTS {table};"
                 )
@@ -110,7 +110,7 @@ def init_database():
             task_id="lead_score",
             conn_id="customers",
             sql="""
-            INSERT INTO customer (customer_id, score)
+            INSERT INTO lead_score (customer_id, score)
             VALUES 
                 (1, 1.5),
                 (2, .2);

@@ -1,7 +1,9 @@
 from airflow.sdk import dag, task, Param
+import json
 
 @dag(
-    params=Param(None, dtype=['array', 'null'])
+    params={'property_ids': Param(None, dtype=['array', 'null'])},
+    user_defined_filters={'fromjson': lambda s: json.loads(s)},
 )
 def lead_score_model():
 
@@ -19,7 +21,7 @@ def lead_score_model():
 
         features_path = pathlib.Path(storage_dir) / 'features.csv'
 
-        features.to_csv(features_path)
+        features.to_csv(features_path, index=False)
 
         return features_path.as_posix()
     
@@ -32,11 +34,11 @@ def lead_score_model():
 
         df = pd.read_csv(features_path)
 
-        predictions = df.assign(score=np.log(df.web_activity))[['customer_id', 'score']]
+        predictions = df.assign(score=np.log(df.activity))[['customer_id', 'score']]
 
         predictions_path = pathlib.Path(storage_dir) / 'predictions.csv'
 
-        predictions.to_csv(predictions_path)
+        predictions.to_csv(predictions_path, index=False)
 
         return predictions_path.as_posix()
     
@@ -50,7 +52,12 @@ def lead_score_model():
 
         df = pd.read_csv(predictions_path)
 
-        df.to_sql('lead_score', con=hook.get_sqlalchemy_engine(), index=False)
+        df[['customer_id', 'score']].to_sql(
+            'lead_score',
+            con=hook.get_sqlalchemy_engine(),
+            index=False,
+            if_exists='append'
+            )
 
     
     import pathlib
@@ -58,23 +65,8 @@ def lead_score_model():
     query = pathlib.Path(__file__).parent / 'sql' / 'lead_score_features.sql'
     storage_dir = "/workspace/external_storage/{{ dag.dag_id }}/{{ dag_run.run_id }}"
 
-    features = generate_features(query, storage_dir)
+    features = generate_features(query.read_text(), storage_dir)
     predictions = run_model(storage_dir, features)
     insert_records(predictions)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
+lead_score_model()
